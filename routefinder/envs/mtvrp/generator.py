@@ -58,7 +58,7 @@ class MTVRPGenerator(Generator):
         num_loc: Number of locations to generate
         min_loc: Minimum location value
         max_loc: Maximum location value
-        loc_distribution: Distribution to sample locations from
+        loc_distribution: Distribution to sample locations from''
         capacity: Vehicle capacity. If None, get value based on `get_vehicle_capacity`
         min_demand: Minimum demand value
         max_demand: Maximum demand value
