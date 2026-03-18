@@ -21,6 +21,7 @@ import {
   Sparkles,
   ChevronDown,
 } from 'lucide-react';
+import CheatSheetDialog from './CheatSheetDialog';
 
 export default function TopCommandBar() {
   const {
@@ -223,6 +224,8 @@ export default function TopCommandBar() {
         className="hidden"
         onChange={handleFileUpload}
       />
+
+      <CheatSheetDialog />
 
       <div className="flex-1" />
 
