@@ -18,7 +18,7 @@ class OrderCreate(BaseModel):
     lon: float
     demand: float
     tw_start: float = 0.0
-    tw_end: float = float("inf")
+    tw_end: float = 1e9
     service_time: float = 0.0
     priority: int = 1
     goods_type: str = "A"
@@ -33,8 +33,8 @@ class VehicleCreate(BaseModel):
     depot_lon: float = 0.0
     allowed_goods: list[str] = Field(default_factory=lambda: ["A", "B"])
     shift_start: float = 0.0
-    shift_end: float = float("inf")
-    max_distance: float = float("inf")
+    shift_end: float = 1e9
+    max_distance: float = 1e9
     cost_class: str = "standard"
 
 
@@ -58,6 +58,7 @@ class OptimizationRunCreate(BaseModel):
     vehicle_ids: list[str] = Field(default_factory=list)
     locked_segments: list[LockedSegment] = Field(default_factory=list)
     objective: str = "min_distance"
+    variant: Optional[str] = None
 
 
 class OptimizationRunResponse(BaseModel):

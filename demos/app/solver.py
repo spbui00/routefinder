@@ -35,19 +35,19 @@ from .models import (
     RouteResult,
 )
 
-_env: Optional[MTVRPEnv] = None
+_env_cache: dict[str, MTVRPEnv] = {}
 _policy = None
 _model = None
 
 
-def _get_env() -> MTVRPEnv:
-    global _env
-    if _env is None:
-        _env = MTVRPEnv(
-            MTVRPGenerator(num_loc=20, variant_preset="all"),
+def _get_env(variant: str = "all", num_loc: int = 20) -> MTVRPEnv:
+    key = f"{variant}_{num_loc}"
+    if key not in _env_cache:
+        _env_cache[key] = MTVRPEnv(
+            MTVRPGenerator(num_loc=num_loc, variant_preset=variant),
             check_solution=False,
         )
-    return _env
+    return _env_cache[key]
 
 
 def _try_load_model():
@@ -170,10 +170,14 @@ def solve_scenario(
     scenario: dict,
     vehicle_ids: Optional[list[str]] = None,
     locked_segments: Optional[list[LockedSegment]] = None,
+    variant: Optional[str] = None,
 ) -> PlanResult:
     _try_load_model()
-    env = _get_env()
+    settings = scenario.get("settings", {})
+    effective_variant = variant or settings.get("variant", "all")
     orders_raw = scenario["orders"]
+    num_loc = len(orders_raw)
+    env = _get_env(variant=effective_variant, num_loc=max(num_loc, 3))
     vehicles_raw = scenario["vehicles"]
 
     if vehicle_ids:
