@@ -176,3 +176,6 @@ outputs/
 
 # uv
 uv.lock
+
+# Demo frontend local artifacts
+demos/frontend/node_modules/
