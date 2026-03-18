@@ -1,4 +1,5 @@
 import math
+import random
 import sys
 import os
 
@@ -23,8 +24,14 @@ for _name, _cls in [
 from routefinder.envs import MTVRPGenerator
 from routefinder.envs.mtvrp.generator import VARIANT_GENERATION_PRESETS
 
-from ..models import ScenarioCreate, ScenarioResponse, OrderCreate, VehicleCreate
+from ..models import ScenarioCreate, ScenarioResponse, OrderCreate, VehicleCreate, GoodsType
 from ..store import store
+
+CPH_LAT = 55.6761
+CPH_LON = 12.5683
+CPH_RADIUS_KM = 10.0
+DEG_PER_KM_LAT = 1 / 111.32
+DEG_PER_KM_LON = 1 / (111.32 * math.cos(math.radians(CPH_LAT)))
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 
@@ -43,6 +50,20 @@ def _sanitize(v: float) -> float:
     return round(v, 4)
 
 
+def _remap_copenhagen(x: float, y: float) -> tuple[float, float]:
+    x = min(1.0, max(0.0, x))
+    y = min(1.0, max(0.0, y))
+    angle = 2 * math.pi * y
+    radius_km = CPH_RADIUS_KM * math.sqrt(x)
+    lat = CPH_LAT + (radius_km * math.cos(angle)) * DEG_PER_KM_LAT
+    lon = CPH_LON + (radius_km * math.sin(angle)) * DEG_PER_KM_LON
+    return round(lat, 4), round(lon, 4)
+
+
+def _random_goods() -> GoodsType:
+    return random.choice(["A", "B"])
+
+
 def _td_to_orders_and_vehicles(td, num_vehicles: int):
     locs = td["locs"][0].tolist()
     depot = locs[0]
@@ -59,32 +80,39 @@ def _td_to_orders_and_vehicles(td, num_vehicles: int):
 
     orders = []
     for i in range(n_customers):
-        demand_val = demand_lh[i] * capacity_orig
-        bh_val = demand_bh[i] * capacity_orig
+        lh_abs = demand_lh[i] * capacity_orig
+        bh_abs = demand_bh[i] * capacity_orig
         tw_s = tw[i + 1][0]
         tw_e = tw[i + 1][1]
-        goods = "B" if bh_val > 0.01 and demand_val < 0.01 else "A"
+        goods = _random_goods()
+        lat, lon = _remap_copenhagen(customers[i][0], customers[i][1])
 
         orders.append(OrderCreate(
             order_id=f"ORD-{1000 + i}",
-            lat=round(customers[i][0], 4),
-            lon=round(customers[i][1], 4),
-            demand=round(demand_val + bh_val, 2),
+            lat=lat,
+            lon=lon,
+            demand=round(lh_abs + bh_abs, 2),
             tw_start=_sanitize(tw_s),
             tw_end=_sanitize(tw_e),
             service_time=_sanitize(svc[i + 1]),
-            priority=1,
+            priority=random.choice([1, 1, 1, 2, 3]),
             goods_type=goods,
+            demand_linehaul=round(lh_abs, 2),
+            demand_backhaul=round(bh_abs, 2),
+            demand_unit="ldm",
         ))
+
+    depot_lat, depot_lon = _remap_copenhagen(depot[0], depot[1])
 
     vehicles = []
     for i in range(num_vehicles):
+        veh_goods: list[GoodsType] = random.choice([["A"], ["B"], ["A", "B"], ["A", "B"]])
         vehicles.append(VehicleCreate(
             vehicle_id=f"Truck-{i + 1:03d}",
             capacity=round(capacity_orig, 2),
-            depot_lat=round(depot[0], 4),
-            depot_lon=round(depot[1], 4),
-            allowed_goods=["A", "B"],
+            depot_lat=depot_lat,
+            depot_lon=depot_lon,
+            allowed_goods=veh_goods,
             shift_start=0.0,
             shift_end=_sanitize(tw[0][1]),
             max_distance=_sanitize(dist_limit),
