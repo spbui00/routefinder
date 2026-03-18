@@ -1,5 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { VARIANT_PRESETS } from '../types';
+import type { VariantPreset } from '../types';
 import {
   createScenario,
   generateScenario,
@@ -17,6 +19,7 @@ import {
   RotateCcw,
   Send,
   Sparkles,
+  ChevronDown,
 } from 'lucide-react';
 
 export default function TopCommandBar() {
@@ -24,8 +27,10 @@ export default function TopCommandBar() {
     orders,
     vehicles,
     scenarioId,
+    variant,
     currentPlan,
     setScenarioId,
+    setVariant,
     setCurrentPlan,
     setJobId,
     setJobStatus,
@@ -40,16 +45,16 @@ export default function TopCommandBar() {
 
   const handleGenerate = useCallback(async () => {
     try {
-      const res = await generateScenario(12, 3);
+      const res = await generateScenario(12, 3, variant);
       setOrders(res.orders);
       setVehicles(res.vehicles);
       setScenarioId(res.scenario_id);
       setCurrentPlan(null);
-      addAlert(`Generated ${res.orders.length} orders, ${res.vehicles.length} vehicles`);
+      addAlert(`Generated ${res.orders.length} orders (${variant.toUpperCase()})`);
     } catch (e: unknown) {
       addAlert(`Generate error: ${(e as Error).message}`);
     }
-  }, [setOrders, setVehicles, setScenarioId, setCurrentPlan, addAlert]);
+  }, [variant, setOrders, setVehicles, setScenarioId, setCurrentPlan, addAlert]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,14 +141,14 @@ export default function TopCommandBar() {
         setScenarioId(sid);
       }
       setJobStatus('pending');
-      const jobId = await startOptimization(sid);
+      const jobId = await startOptimization(sid, undefined, undefined, variant);
       setJobId(jobId);
-      addAlert('Optimization started…');
+      addAlert(`Optimization started (${variant.toUpperCase()})…`);
       pollJob(jobId);
     } catch (e: unknown) {
       addAlert(`Optimize error: ${(e as Error).message}`);
     }
-  }, [orders, vehicles, scenarioId, setScenarioId, setJobId, setJobStatus, addAlert, pollJob]);
+  }, [orders, vehicles, scenarioId, variant, setScenarioId, setJobId, setJobStatus, addAlert, pollJob]);
 
   const handleReoptimize = useCallback(async () => {
     if (!currentPlan) {
@@ -189,9 +194,22 @@ export default function TopCommandBar() {
 
       <Separator orientation="vertical" className="h-5" />
 
+      <div className="relative inline-flex items-center">
+        <select
+          value={variant}
+          onChange={(e) => setVariant(e.target.value as VariantPreset)}
+          className="appearance-none bg-muted border border-border rounded-md pl-2.5 pr-7 py-1 text-xs font-medium text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          {VARIANT_PRESETS.map((v) => (
+            <option key={v} value={v}>{v.toUpperCase()}</option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-1.5 h-3 w-3 text-muted-foreground" />
+      </div>
+
       <Button variant="secondary" size="sm" onClick={handleGenerate}>
         <Sparkles className="h-3.5 w-3.5" />
-        Generate Sample
+        Generate
       </Button>
 
       <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
@@ -207,6 +225,10 @@ export default function TopCommandBar() {
       />
 
       <div className="flex-1" />
+
+      <Badge variant="secondary" className="text-[10px] font-mono">
+        {variant.toUpperCase()}
+      </Badge>
 
       <Button size="sm" onClick={handleOptimize}>
         <Play className="h-3.5 w-3.5" />
