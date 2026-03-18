@@ -17,10 +17,11 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export async function generateScenario(
   numOrders = 12,
   numVehicles = 3,
+  variant = 'all',
 ): Promise<GenerateResponse> {
   return request<GenerateResponse>('/scenarios/generate', {
     method: 'POST',
-    body: JSON.stringify({ num_orders: numOrders, num_vehicles: numVehicles }),
+    body: JSON.stringify({ num_orders: numOrders, num_vehicles: numVehicles, variant }),
   });
 }
 
@@ -39,6 +40,7 @@ export async function startOptimization(
   scenarioId: string,
   vehicleIds?: string[],
   lockedSegments?: { vehicle_id: string; fixed_prefix: number[] }[],
+  variant?: string,
 ): Promise<string> {
   const data = await request<{ job_id: string }>('/optimization-runs', {
     method: 'POST',
@@ -46,6 +48,7 @@ export async function startOptimization(
       scenario_id: scenarioId,
       vehicle_ids: vehicleIds ?? [],
       locked_segments: lockedSegments ?? [],
+      variant: variant ?? undefined,
     }),
   });
   return data.job_id;

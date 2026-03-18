@@ -4,6 +4,7 @@ import type {
   JobStatus,
   Order,
   PlanResult,
+  VariantPreset,
   Vehicle,
 } from '../types';
 
@@ -11,6 +12,7 @@ interface AppState {
   orders: Order[];
   vehicles: Vehicle[];
   scenarioId: string | null;
+  variant: VariantPreset;
 
   currentPlan: PlanResult | null;
   selectedVehicle: string | null;
@@ -25,6 +27,7 @@ interface AppState {
   setOrders: (orders: Order[]) => void;
   setVehicles: (vehicles: Vehicle[]) => void;
   setScenarioId: (id: string) => void;
+  setVariant: (v: VariantPreset) => void;
   setCurrentPlan: (plan: PlanResult | null) => void;
   setSelectedVehicle: (id: string | null) => void;
   setJobId: (id: string | null) => void;
@@ -39,6 +42,7 @@ export const useStore = create<AppState>((set) => ({
   orders: [],
   vehicles: [],
   scenarioId: null,
+  variant: 'all',
   currentPlan: null,
   selectedVehicle: null,
   jobId: null,
@@ -50,6 +54,7 @@ export const useStore = create<AppState>((set) => ({
   setOrders: (orders) => set({ orders }),
   setVehicles: (vehicles) => set({ vehicles }),
   setScenarioId: (scenarioId) => set({ scenarioId }),
+  setVariant: (variant) => set({ variant }),
   setCurrentPlan: (currentPlan) => set({ currentPlan }),
   setSelectedVehicle: (selectedVehicle) => set({ selectedVehicle }),
   setJobId: (jobId) => set({ jobId }),

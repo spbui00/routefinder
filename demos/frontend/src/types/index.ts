@@ -68,6 +68,15 @@ export interface JobStatusResponse {
 
 export interface GenerateResponse {
   scenario_id: string;
+  variant: string;
   orders: Order[];
   vehicles: Vehicle[];
 }
+
+export const VARIANT_PRESETS = [
+  'all', 'cvrp', 'ovrp', 'ovrpb', 'ovrpbl', 'ovrpbltw', 'ovrpbtw',
+  'ovrpl', 'ovrpltw', 'ovrptw', 'vrpb', 'vrpbl', 'vrpbltw', 'vrpbtw',
+  'vrpl', 'vrpltw', 'vrptw',
+] as const;
+
+export type VariantPreset = typeof VARIANT_PRESETS[number];
