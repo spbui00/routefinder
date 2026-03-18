@@ -6,6 +6,9 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 PYTHON="${PYTHON:-/Users/bui/anaconda3/envs/routefinder/bin/python}"
 
+lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+
 echo "Starting backend on :8000 ..."
 cd "$SCRIPT_DIR"
 PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" "$PYTHON" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &

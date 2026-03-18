@@ -2,13 +2,22 @@ import { useCallback, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import {
   createScenario,
+  generateScenario,
   getJobStatus,
   publishPlan,
   rerunPlan,
   startOptimization,
 } from '../api/client';
-
-const SAMPLE_DATA_URL = '/api/health';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
+import {
+  Upload,
+  Play,
+  RotateCcw,
+  Send,
+  Sparkles,
+} from 'lucide-react';
 
 export default function TopCommandBar() {
   const {
@@ -29,39 +38,18 @@ export default function TopCommandBar() {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleLoadSample = useCallback(async () => {
+  const handleGenerate = useCallback(async () => {
     try {
-      const res = await fetch('/logistics_data.json');
-      const data = await res.json();
-      const mappedOrders = data.orders.map((o: any) => ({
-        order_id: o.id,
-        lat: o.receiver.lat,
-        lon: o.receiver.lon,
-        demand: o.demand.ldm,
-        tw_start: o.time_window?.[0] ?? 0,
-        tw_end: o.time_window?.[1] ?? Infinity,
-        service_time: 0,
-        priority: 1,
-        goods_type: o.demand.goods_type,
-      }));
-      const mappedVehicles = data.fleet.map((v: any) => ({
-        vehicle_id: v.vehicle_id,
-        capacity: v.capacity_ldm ?? 30,
-        depot_lat: 55.49,
-        depot_lon: 9.47,
-        allowed_goods: v.allowed_goods ?? ['A', 'B'],
-        shift_start: 0,
-        shift_end: Infinity,
-        max_distance: Infinity,
-        cost_class: 'standard',
-      }));
-      setOrders(mappedOrders);
-      setVehicles(mappedVehicles);
-      addAlert('Sample data loaded');
-    } catch (e: any) {
-      addAlert(`Failed to load sample data: ${e.message}`);
+      const res = await generateScenario(12, 3);
+      setOrders(res.orders);
+      setVehicles(res.vehicles);
+      setScenarioId(res.scenario_id);
+      setCurrentPlan(null);
+      addAlert(`Generated ${res.orders.length} orders, ${res.vehicles.length} vehicles`);
+    } catch (e: unknown) {
+      addAlert(`Generate error: ${(e as Error).message}`);
     }
-  }, [setOrders, setVehicles, addAlert]);
+  }, [setOrders, setVehicles, setScenarioId, setCurrentPlan, addAlert]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,22 +60,24 @@ export default function TopCommandBar() {
         try {
           const data = JSON.parse(ev.target?.result as string);
           if (data.orders) {
-            const mappedOrders = data.orders.map((o: any) => ({
+            const mappedOrders = data.orders.map((o: Record<string, unknown>) => ({
               order_id: o.id ?? o.order_id,
-              lat: o.receiver?.lat ?? o.lat ?? 0,
-              lon: o.receiver?.lon ?? o.lon ?? 0,
-              demand: o.demand?.ldm ?? o.demand ?? 0,
-              tw_start: o.time_window?.[0] ?? o.tw_start ?? 0,
-              tw_end: o.time_window?.[1] ?? o.tw_end ?? Infinity,
+              lat: (o.receiver as Record<string, unknown>)?.lat ?? o.lat ?? 0,
+              lon: (o.receiver as Record<string, unknown>)?.lon ?? o.lon ?? 0,
+              demand: (o.demand as Record<string, unknown>)?.ldm ?? o.demand ?? 0,
+              tw_start: (o.time_window as number[])?.[0] ?? o.tw_start ?? 0,
+              tw_end: (o.time_window as number[])?.[1] ?? o.tw_end ?? Infinity,
               service_time: o.service_time ?? 0,
               priority: o.priority ?? 1,
-              goods_type: o.demand?.goods_type ?? o.goods_type ?? 'A',
+              goods_type: (o.demand as Record<string, unknown>)?.goods_type ?? o.goods_type ?? 'A',
+              must_follow: o.must_follow ?? undefined,
+              must_precede: o.must_precede ?? undefined,
             }));
             setOrders(mappedOrders);
           }
           if (data.fleet || data.vehicles) {
             const fleet = data.fleet ?? data.vehicles;
-            const mappedVehicles = fleet.map((v: any) => ({
+            const mappedVehicles = fleet.map((v: Record<string, unknown>) => ({
               vehicle_id: v.vehicle_id,
               capacity: v.capacity_ldm ?? v.capacity ?? 30,
               depot_lat: v.depot_lat ?? 55.49,
@@ -100,14 +90,15 @@ export default function TopCommandBar() {
             }));
             setVehicles(mappedVehicles);
           }
+          setCurrentPlan(null);
           addAlert('Data loaded from file');
-        } catch (err: any) {
-          addAlert(`Parse error: ${err.message}`);
+        } catch (err: unknown) {
+          addAlert(`Parse error: ${(err as Error).message}`);
         }
       };
       reader.readAsText(file);
     },
-    [setOrders, setVehicles, addAlert],
+    [setOrders, setVehicles, setCurrentPlan, addAlert],
   );
 
   const pollJob = useCallback(
@@ -119,9 +110,7 @@ export default function TopCommandBar() {
         if (status.status === 'completed' && status.plan) {
           setCurrentPlan(status.plan);
           setViolations(status.plan.violations ?? []);
-          addAlert(
-            `Optimization complete. Cost: ${status.plan.objective_value.toFixed(4)}`,
-          );
+          addAlert(`Optimization complete — cost: ${status.plan.objective_value.toFixed(4)}`);
           return;
         }
         if (status.status === 'failed') {
@@ -149,21 +138,12 @@ export default function TopCommandBar() {
       setJobStatus('pending');
       const jobId = await startOptimization(sid);
       setJobId(jobId);
-      addAlert('Optimization started...');
+      addAlert('Optimization started…');
       pollJob(jobId);
-    } catch (e: any) {
-      addAlert(`Optimize error: ${e.message}`);
+    } catch (e: unknown) {
+      addAlert(`Optimize error: ${(e as Error).message}`);
     }
-  }, [
-    orders,
-    vehicles,
-    scenarioId,
-    setScenarioId,
-    setJobId,
-    setJobStatus,
-    addAlert,
-    pollJob,
-  ]);
+  }, [orders, vehicles, scenarioId, setScenarioId, setJobId, setJobStatus, addAlert, pollJob]);
 
   const handleReoptimize = useCallback(async () => {
     if (!currentPlan) {
@@ -180,10 +160,10 @@ export default function TopCommandBar() {
       setJobStatus('pending');
       const jobId = await rerunPlan(currentPlan.plan_id, locked);
       setJobId(jobId);
-      addAlert('Re-optimization started...');
+      addAlert('Re-optimization started…');
       pollJob(jobId);
-    } catch (e: any) {
-      addAlert(`Re-optimize error: ${e.message}`);
+    } catch (e: unknown) {
+      addAlert(`Re-optimize error: ${(e as Error).message}`);
     }
   }, [currentPlan, setJobId, setJobStatus, addAlert, pollJob]);
 
@@ -196,30 +176,28 @@ export default function TopCommandBar() {
       const result = await publishPlan(currentPlan.plan_id);
       addAlert(`Published: ${result.dispatch_snapshot_id}`);
       setCurrentPlan({ ...currentPlan, status: 'published' });
-    } catch (e: any) {
-      addAlert(`Publish error: ${e.message}`);
+    } catch (e: unknown) {
+      addAlert(`Publish error: ${(e as Error).message}`);
     }
   }, [currentPlan, setCurrentPlan, addAlert]);
 
   return (
-    <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 text-sm border-b border-slate-700">
-      <span className="font-bold text-lg mr-4 text-blue-400">
+    <header className="flex items-center gap-3 bg-card border-b border-border px-4 py-2">
+      <h1 className="font-bold text-base text-primary tracking-tight mr-1">
         Dispatcher Workspace
-      </span>
+      </h1>
 
-      <button
-        onClick={handleLoadSample}
-        className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-medium"
-      >
-        Load Sample
-      </button>
+      <Separator orientation="vertical" className="h-5" />
 
-      <button
-        onClick={() => fileRef.current?.click()}
-        className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-medium"
-      >
+      <Button variant="secondary" size="sm" onClick={handleGenerate}>
+        <Sparkles className="h-3.5 w-3.5" />
+        Generate Sample
+      </Button>
+
+      <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
+        <Upload className="h-3.5 w-3.5" />
         Upload JSON
-      </button>
+      </Button>
       <input
         ref={fileRef}
         type="file"
@@ -230,30 +208,24 @@ export default function TopCommandBar() {
 
       <div className="flex-1" />
 
-      <button
-        onClick={handleOptimize}
-        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-semibold text-xs"
-      >
+      <Button size="sm" onClick={handleOptimize}>
+        <Play className="h-3.5 w-3.5" />
         Optimize
-      </button>
-      <button
-        onClick={handleReoptimize}
-        className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 rounded font-semibold text-xs"
-      >
+      </Button>
+      <Button variant="warning" size="sm" onClick={handleReoptimize}>
+        <RotateCcw className="h-3.5 w-3.5" />
         Re-optimize
-      </button>
-      <button
-        onClick={handlePublish}
-        className="px-4 py-1.5 bg-green-600 hover:bg-green-500 rounded font-semibold text-xs"
-      >
+      </Button>
+      <Button variant="success" size="sm" onClick={handlePublish}>
+        <Send className="h-3.5 w-3.5" />
         Publish
-      </button>
+      </Button>
 
       {currentPlan && (
-        <span className="ml-2 text-xs text-slate-400">
-          Plan: {currentPlan.plan_id.slice(0, 8)}… ({currentPlan.status})
-        </span>
+        <Badge variant={currentPlan.status === 'published' ? 'success' : 'info'}>
+          {currentPlan.plan_id.slice(0, 8)}… · {currentPlan.status}
+        </Badge>
       )}
-    </div>
+    </header>
   );
 }

@@ -1,4 +1,4 @@
-import type { JobStatusResponse, Order, PlanResult, Vehicle } from '../types';
+import type { GenerateResponse, JobStatusResponse, Order, PlanResult, Vehicle } from '../types';
 
 const BASE = '/api';
 
@@ -12,6 +12,16 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(`API error ${res.status}: ${err}`);
   }
   return res.json();
+}
+
+export async function generateScenario(
+  numOrders = 12,
+  numVehicles = 3,
+): Promise<GenerateResponse> {
+  return request<GenerateResponse>('/scenarios/generate', {
+    method: 'POST',
+    body: JSON.stringify({ num_orders: numOrders, num_vehicles: numVehicles }),
+  });
 }
 
 export async function createScenario(

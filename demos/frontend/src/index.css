@@ -1,8 +1,72 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+@theme {
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.145 0.005 285);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.145 0.005 285);
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.145 0.005 285);
+  --color-primary: oklch(0.205 0.005 285);
+  --color-primary-foreground: oklch(0.985 0 0);
+  --color-secondary: oklch(0.965 0.002 285);
+  --color-secondary-foreground: oklch(0.205 0.005 285);
+  --color-muted: oklch(0.965 0.002 285);
+  --color-muted-foreground: oklch(0.46 0.01 285);
+  --color-accent: oklch(0.965 0.002 285);
+  --color-accent-foreground: oklch(0.205 0.005 285);
+  --color-destructive: oklch(0.55 0.2 25);
+  --color-border: oklch(0.915 0.005 285);
+  --color-input: oklch(0.915 0.005 285);
+  --color-ring: oklch(0.205 0.005 285);
+
+  --color-sidebar: oklch(0.985 0.002 285);
+  --color-sidebar-foreground: oklch(0.205 0.005 285);
+  --color-sidebar-border: oklch(0.915 0.005 285);
+
+  --radius: 0.5rem;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Leaflet popup — clean light style */
+.leaflet-popup-content-wrapper {
+  background: #fff !important;
+  color: #0f172a !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08) !important;
+}
+.leaflet-popup-tip {
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+}
+.leaflet-popup-close-button {
+  color: #6b7280 !important;
+}
+
+/* Scrollbar styling */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
 }

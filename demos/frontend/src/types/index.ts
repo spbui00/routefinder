@@ -65,3 +65,9 @@ export interface JobStatusResponse {
   progress: number;
   plan?: PlanResult;
 }
+
+export interface GenerateResponse {
+  scenario_id: string;
+  orders: Order[];
+  vehicles: Vehicle[];
+}

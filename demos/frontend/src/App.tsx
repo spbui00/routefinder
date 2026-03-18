@@ -6,7 +6,7 @@ import BottomStrip from './components/BottomStrip';
 
 export default function App() {
   return (
-    <div className="h-screen flex flex-col bg-slate-900">
+    <div className="h-screen flex flex-col bg-background text-foreground">
       <TopCommandBar />
       <div className="flex-1 flex overflow-hidden">
         <LeftRail />

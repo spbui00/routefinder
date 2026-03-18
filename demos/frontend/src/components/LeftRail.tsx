@@ -1,12 +1,27 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { ScrollArea } from './ui/scroll-area';
+import { Separator } from './ui/separator';
+import { formatTw } from './OrderPropChip';
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Package,
+  Truck,
+} from 'lucide-react';
+
+type SortKey = 'order_id' | 'demand' | 'priority' | 'tw_start' | 'tw_end' | 'service_time' | 'goods_type';
 
 export default function LeftRail() {
   const { orders, vehicles } = useStore();
-  const [sortKey, setSortKey] = useState<string>('order_id');
+  const [sortKey, setSortKey] = useState<SortKey>('order_id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [filterGoods, setFilterGoods] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const goodsTypes = useMemo(
     () => ['all', ...new Set(orders.map((o) => o.goods_type))],
@@ -15,17 +30,12 @@ export default function LeftRail() {
 
   const sorted = useMemo(() => {
     let filtered = [...orders];
-    if (filterGoods !== 'all') {
-      filtered = filtered.filter((o) => o.goods_type === filterGoods);
-    }
-    if (filterPriority !== 'all') {
-      filtered = filtered.filter(
-        (o) => o.priority === parseInt(filterPriority),
-      );
-    }
+    if (filterGoods !== 'all') filtered = filtered.filter((o) => o.goods_type === filterGoods);
+    if (filterPriority !== 'all') filtered = filtered.filter((o) => o.priority === parseInt(filterPriority));
     filtered.sort((a, b) => {
-      const av = (a as any)[sortKey];
-      const bv = (b as any)[sortKey];
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av == null || bv == null) return 0;
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ? 1 : -1;
       return 0;
@@ -33,7 +43,7 @@ export default function LeftRail() {
     return filtered;
   }, [orders, sortKey, sortDir, filterGoods, filterPriority]);
 
-  const toggleSort = (key: string) => {
+  const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -42,132 +52,144 @@ export default function LeftRail() {
     }
   };
 
-  const SortIcon = ({ col }: { col: string }) =>
-    sortKey === col ? (
-      <span className="ml-0.5 text-[10px]">
-        {sortDir === 'asc' ? '▲' : '▼'}
-      </span>
-    ) : null;
+  function SortBtn({ col, label }: { col: SortKey; label: string }) {
+    const active = sortKey === col;
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className={`h-6 px-1.5 text-[10px] font-medium ${active ? 'text-primary' : 'text-muted-foreground'}`}
+        onClick={() => toggleSort(col)}
+      >
+        {label}
+        {active ? (
+          sortDir === 'asc' ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />
+        ) : (
+          <ArrowUpDown className="h-2.5 w-2.5 opacity-40" />
+        )}
+      </Button>
+    );
+  }
 
   return (
-    <div className="w-72 bg-slate-800 text-slate-200 flex flex-col border-r border-slate-700 overflow-hidden">
-      <div className="p-3 border-b border-slate-700">
-        <h2 className="font-semibold text-sm mb-2">
-          Orders ({orders.length})
-        </h2>
-        <div className="flex gap-2 text-xs">
+    <aside className="w-[310px] bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
+      <div className="p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold">Orders</h2>
+          <Badge variant="secondary" className="ml-auto">{orders.length}</Badge>
+        </div>
+
+        <div className="flex gap-1.5">
           <select
             value={filterGoods}
             onChange={(e) => setFilterGoods(e.target.value)}
-            className="bg-slate-700 rounded px-1.5 py-0.5 text-xs flex-1"
+            className="flex-1 h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {goodsTypes.map((g) => (
-              <option key={g} value={g}>
-                {g === 'all' ? 'All Goods' : `Type ${g}`}
-              </option>
+              <option key={g} value={g}>{g === 'all' ? 'All types' : `Type ${g}`}</option>
             ))}
           </select>
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="bg-slate-700 rounded px-1.5 py-0.5 text-xs flex-1"
+            className="flex-1 h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
-            <option value="all">All Priority</option>
+            <option value="all">All priority</option>
             <option value="1">P1</option>
             <option value="2">P2</option>
             <option value="3">P3</option>
           </select>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto text-xs">
-        <table className="w-full">
-          <thead className="sticky top-0 bg-slate-700">
-            <tr>
-              <th
-                className="px-2 py-1.5 text-left cursor-pointer hover:text-white"
-                onClick={() => toggleSort('order_id')}
-              >
-                ID
-                <SortIcon col="order_id" />
-              </th>
-              <th
-                className="px-2 py-1.5 text-left cursor-pointer hover:text-white"
-                onClick={() => toggleSort('demand')}
-              >
-                Demand
-                <SortIcon col="demand" />
-              </th>
-              <th
-                className="px-2 py-1.5 text-left cursor-pointer hover:text-white"
-                onClick={() => toggleSort('goods_type')}
-              >
-                Type
-                <SortIcon col="goods_type" />
-              </th>
-              <th
-                className="px-2 py-1.5 text-left cursor-pointer hover:text-white"
-                onClick={() => toggleSort('priority')}
-              >
-                Pri
-                <SortIcon col="priority" />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((o) => (
-              <tr
-                key={o.order_id}
-                className="hover:bg-slate-700/50 border-b border-slate-700/30"
-              >
-                <td className="px-2 py-1 font-mono">{o.order_id}</td>
-                <td className="px-2 py-1">{o.demand}</td>
-                <td className="px-2 py-1">
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                      o.goods_type === 'A'
-                        ? 'bg-blue-900 text-blue-300'
-                        : 'bg-amber-900 text-amber-300'
-                    }`}
-                  >
-                    {o.goods_type}
-                  </span>
-                </td>
-                <td className="px-2 py-1">{o.priority}</td>
-              </tr>
-            ))}
-            {orders.length === 0 && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-2 py-4 text-center text-slate-500"
-                >
-                  No orders loaded
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="p-3 border-t border-slate-700">
-        <h2 className="font-semibold text-sm mb-1">
-          Fleet ({vehicles.length})
-        </h2>
-        <div className="space-y-1 text-xs max-h-32 overflow-y-auto">
-          {vehicles.map((v) => (
-            <div
-              key={v.vehicle_id}
-              className="flex justify-between bg-slate-700/50 px-2 py-1 rounded"
-            >
-              <span className="font-mono truncate">{v.vehicle_id}</span>
-              <span className="text-slate-400">
-                cap: {v.capacity} | {v.allowed_goods.join(',')}
-              </span>
-            </div>
-          ))}
+        <div className="flex flex-wrap gap-0.5">
+          <SortBtn col="order_id" label="ID" />
+          <SortBtn col="demand" label="Demand" />
+          <SortBtn col="priority" label="Priority" />
+          <SortBtn col="tw_start" label="TW Start" />
+          <SortBtn col="tw_end" label="TW End" />
+          <SortBtn col="service_time" label="Svc Time" />
         </div>
       </div>
-    </div>
+
+      <Separator />
+
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {sorted.map((o) => {
+            const expanded = expandedId === o.order_id;
+            return (
+              <div
+                key={o.order_id}
+                onClick={() => setExpandedId(expanded ? null : o.order_id)}
+                className={`rounded-lg border p-2 cursor-pointer transition-colors ${
+                  expanded
+                    ? 'border-primary/40 bg-primary/5'
+                    : 'border-border bg-card hover:bg-accent/40'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-semibold text-foreground">{o.order_id}</span>
+                  <Badge variant={o.goods_type === 'A' ? 'info' : 'warning'} className="text-[9px]">
+                    {o.goods_type}
+                  </Badge>
+                  <Badge variant={o.priority === 1 ? 'default' : o.priority === 2 ? 'warning' : 'destructive'} className="text-[9px]">
+                    P{o.priority}
+                  </Badge>
+                  <span className="ml-auto text-[10px] text-muted-foreground font-medium">
+                    {o.demand.toFixed(1)} LDM
+                  </span>
+                </div>
+
+                {expanded && (
+                  <div className="mt-2 pt-2 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                    <div><span className="text-muted-foreground">Location:</span> {o.lat.toFixed(2)}, {o.lon.toFixed(2)}</div>
+                    <div><span className="text-muted-foreground">Time window:</span> {formatTw(o.tw_start, o.tw_end)}</div>
+                    <div><span className="text-muted-foreground">Service time:</span> {o.service_time.toFixed(2)}</div>
+                    <div><span className="text-muted-foreground">Demand:</span> {o.demand.toFixed(1)}</div>
+                    {o.must_follow && (
+                      <div className="col-span-2"><span className="text-muted-foreground">Must follow:</span> {o.must_follow}</div>
+                    )}
+                    {o.must_precede && (
+                      <div className="col-span-2"><span className="text-muted-foreground">Must precede:</span> {o.must_precede}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {orders.length === 0 && (
+            <div className="text-center text-muted-foreground text-sm py-8">
+              No orders loaded.
+              <br />
+              <span className="text-xs">Click "Generate Sample" to start.</span>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      <Separator />
+
+      <div className="p-3 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <Truck className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold">Fleet</h2>
+          <Badge variant="secondary" className="ml-auto">{vehicles.length}</Badge>
+        </div>
+        <ScrollArea className="max-h-28">
+          <div className="space-y-1">
+            {vehicles.map((v) => (
+              <div key={v.vehicle_id} className="flex items-center justify-between rounded-md bg-card border border-border px-2.5 py-1.5 text-xs">
+                <span className="font-mono font-medium truncate">{v.vehicle_id}</span>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span>Cap: {v.capacity}</span>
+                  <span className="text-[10px]">{v.allowed_goods.join(',')}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </aside>
   );
 }
