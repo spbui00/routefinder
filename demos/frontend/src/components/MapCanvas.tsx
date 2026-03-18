@@ -99,8 +99,8 @@ export default function MapCanvas() {
   return (
     <div className="flex-1 relative">
       <MapContainer
-        center={[55.0, 9.0]}
-        zoom={6}
+        center={[55.6761, 12.5683]}
+        zoom={11}
         className="h-full w-full"
         style={{ background: '#f8fafc' }}
       >
@@ -134,10 +134,13 @@ export default function MapCanvas() {
                   <span className="inline-block px-1 py-0.5 rounded text-[9px] font-bold bg-gray-100 text-gray-700">P{o.priority}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
-                  <div><span style={{ opacity: 0.6 }}>Demand:</span> {o.demand.toFixed(1)}</div>
+                  <div><span style={{ opacity: 0.6 }}>Demand:</span> {o.demand.toFixed(1)} {o.demand_unit ?? 'ldm'}</div>
                   <div><span style={{ opacity: 0.6 }}>Svc time:</span> {o.service_time.toFixed(2)}</div>
                   <div><span style={{ opacity: 0.6 }}>TW:</span> {formatTw(o.tw_start, o.tw_end)}</div>
-                  <div><span style={{ opacity: 0.6 }}>Location:</span> {o.lat.toFixed(2)}, {o.lon.toFixed(2)}</div>
+                  <div><span style={{ opacity: 0.6 }}>Location:</span> {o.lat.toFixed(4)}, {o.lon.toFixed(4)}</div>
+                  {(o.demand_linehaul != null || o.demand_backhaul != null) && (
+                    <div className="col-span-2"><span style={{ opacity: 0.6 }}>LH:</span> {(o.demand_linehaul ?? 0).toFixed(1)} <span style={{ opacity: 0.6, marginLeft: 4 }}>BH:</span> {(o.demand_backhaul ?? 0).toFixed(1)}</div>
+                  )}
                   {o.must_follow && <div className="col-span-2"><span style={{ opacity: 0.6 }}>After:</span> {o.must_follow}</div>}
                   {o.must_precede && <div className="col-span-2"><span style={{ opacity: 0.6 }}>Before:</span> {o.must_precede}</div>}
                 </div>

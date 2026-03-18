@@ -29,9 +29,11 @@ export default function TopCommandBar() {
     vehicles,
     scenarioId,
     variant,
+    numOrders,
     currentPlan,
     setScenarioId,
     setVariant,
+    setNumOrders,
     setCurrentPlan,
     setJobId,
     setJobStatus,
@@ -46,16 +48,17 @@ export default function TopCommandBar() {
 
   const handleGenerate = useCallback(async () => {
     try {
-      const res = await generateScenario(12, 3, variant);
+      const numVehicles = Math.max(1, Math.ceil(numOrders / 5));
+      const res = await generateScenario(numOrders, numVehicles, variant);
       setOrders(res.orders);
       setVehicles(res.vehicles);
       setScenarioId(res.scenario_id);
       setCurrentPlan(null);
-      addAlert(`Generated ${res.orders.length} orders (${variant.toUpperCase()})`);
+      addAlert(`Generated ${res.orders.length} orders, ${res.vehicles.length} vehicles (${variant.toUpperCase()})`);
     } catch (e: unknown) {
       addAlert(`Generate error: ${(e as Error).message}`);
     }
-  }, [variant, setOrders, setVehicles, setScenarioId, setCurrentPlan, addAlert]);
+  }, [variant, numOrders, setOrders, setVehicles, setScenarioId, setCurrentPlan, addAlert]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,6 +210,17 @@ export default function TopCommandBar() {
         </select>
         <ChevronDown className="pointer-events-none absolute right-1.5 h-3 w-3 text-muted-foreground" />
       </div>
+
+      <input
+        type="number"
+        min={3}
+        max={100}
+        value={numOrders}
+        onChange={(e) => setNumOrders(Math.max(3, Math.min(100, parseInt(e.target.value) || 3)))}
+        className="w-16 bg-muted border border-border rounded-md px-2 py-1 text-xs font-medium text-foreground text-center focus:outline-none focus:ring-1 focus:ring-ring"
+        title="Number of orders"
+      />
+      <span className="text-[10px] text-muted-foreground -ml-1">orders</span>
 
       <Button variant="secondary" size="sm" onClick={handleGenerate}>
         <Sparkles className="h-3.5 w-3.5" />

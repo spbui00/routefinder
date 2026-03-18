@@ -13,6 +13,7 @@ interface AppState {
   vehicles: Vehicle[];
   scenarioId: string | null;
   variant: VariantPreset;
+  numOrders: number;
 
   currentPlan: PlanResult | null;
   selectedVehicle: string | null;
@@ -28,6 +29,7 @@ interface AppState {
   setVehicles: (vehicles: Vehicle[]) => void;
   setScenarioId: (id: string) => void;
   setVariant: (v: VariantPreset) => void;
+  setNumOrders: (n: number) => void;
   setCurrentPlan: (plan: PlanResult | null) => void;
   setSelectedVehicle: (id: string | null) => void;
   setJobId: (id: string | null) => void;
@@ -43,6 +45,7 @@ export const useStore = create<AppState>((set) => ({
   vehicles: [],
   scenarioId: null,
   variant: 'all',
+  numOrders: 12,
   currentPlan: null,
   selectedVehicle: null,
   jobId: null,
@@ -55,6 +58,7 @@ export const useStore = create<AppState>((set) => ({
   setVehicles: (vehicles) => set({ vehicles }),
   setScenarioId: (scenarioId) => set({ scenarioId }),
   setVariant: (variant) => set({ variant }),
+  setNumOrders: (numOrders) => set({ numOrders }),
   setCurrentPlan: (currentPlan) => set({ currentPlan }),
   setSelectedVehicle: (selectedVehicle) => set({ selectedVehicle }),
   setJobId: (jobId) => set({ jobId }),

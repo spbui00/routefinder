@@ -1,3 +1,5 @@
+export type GoodsType = 'A' | 'B';
+
 export interface Order {
   order_id: string;
   lat: number;
@@ -7,9 +9,12 @@ export interface Order {
   tw_end: number;
   service_time: number;
   priority: number;
-  goods_type: string;
+  goods_type: GoodsType;
   must_follow?: string;
   must_precede?: string;
+  demand_linehaul?: number;
+  demand_backhaul?: number;
+  demand_unit?: string;
 }
 
 export interface Vehicle {
@@ -17,11 +22,12 @@ export interface Vehicle {
   capacity: number;
   depot_lat: number;
   depot_lon: number;
-  allowed_goods: string[];
+  allowed_goods: GoodsType[];
   shift_start: number;
   shift_end: number;
   max_distance: number;
   cost_class: string;
+  capacity_by_goods?: Partial<Record<GoodsType, number>>;
 }
 
 export interface RouteMetrics {

@@ -143,10 +143,16 @@ export default function LeftRail() {
 
                 {expanded && (
                   <div className="mt-2 pt-2 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-                    <div><span className="text-muted-foreground">Location:</span> {o.lat.toFixed(2)}, {o.lon.toFixed(2)}</div>
+                    <div><span className="text-muted-foreground">Location:</span> {o.lat.toFixed(4)}, {o.lon.toFixed(4)}</div>
                     <div><span className="text-muted-foreground">Time window:</span> {formatTw(o.tw_start, o.tw_end)}</div>
                     <div><span className="text-muted-foreground">Service time:</span> {o.service_time.toFixed(2)}</div>
-                    <div><span className="text-muted-foreground">Demand:</span> {o.demand.toFixed(1)}</div>
+                    <div><span className="text-muted-foreground">Demand:</span> {o.demand.toFixed(1)} {o.demand_unit ?? 'ldm'}</div>
+                    {(o.demand_linehaul != null || o.demand_backhaul != null) && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">LH:</span> {(o.demand_linehaul ?? 0).toFixed(1)}{' '}
+                        <span className="text-muted-foreground ml-2">BH:</span> {(o.demand_backhaul ?? 0).toFixed(1)}
+                      </div>
+                    )}
                     {o.must_follow && (
                       <div className="col-span-2"><span className="text-muted-foreground">Must follow:</span> {o.must_follow}</div>
                     )}
@@ -183,7 +189,11 @@ export default function LeftRail() {
                 <span className="font-mono font-medium truncate">{v.vehicle_id}</span>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <span>Cap: {v.capacity}</span>
-                  <span className="text-[10px]">{v.allowed_goods.join(',')}</span>
+                  <div className="flex gap-0.5">
+                    {v.allowed_goods.map((g) => (
+                      <Badge key={g} variant={g === 'A' ? 'info' : 'warning'} className="text-[8px] px-1 py-0">{g}</Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
