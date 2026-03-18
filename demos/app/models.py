@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,18 +12,24 @@ def _gen_id() -> str:
     return str(uuid.uuid4())
 
 
+GoodsType = Literal["A", "B"]
+
+
 class OrderCreate(BaseModel):
     order_id: str
     lat: float
     lon: float
-    demand: float
+    demand: float = Field(..., ge=0)
     tw_start: float = 0.0
     tw_end: float = 1e9
     service_time: float = 0.0
     priority: int = 1
-    goods_type: str = "A"
+    goods_type: GoodsType = "A"
     must_follow: Optional[str] = None
     must_precede: Optional[str] = None
+    demand_linehaul: float = Field(default=0.0, ge=0.0)
+    demand_backhaul: float = Field(default=0.0, ge=0.0)
+    demand_unit: str = "ldm"
 
 
 class VehicleCreate(BaseModel):
@@ -31,11 +37,12 @@ class VehicleCreate(BaseModel):
     capacity: float = 30.0
     depot_lat: float = 0.0
     depot_lon: float = 0.0
-    allowed_goods: list[str] = Field(default_factory=lambda: ["A", "B"])
+    allowed_goods: list[GoodsType] = Field(default_factory=lambda: ["A", "B"])
     shift_start: float = 0.0
     shift_end: float = 1e9
     max_distance: float = 1e9
     cost_class: str = "standard"
+    capacity_by_goods: Optional[dict[str, float]] = None
 
 
 class ScenarioCreate(BaseModel):
