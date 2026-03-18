@@ -1,0 +1,284 @@
+{
+  "meta": {
+    "description": "Synthetic VRP Data for Logistics PoC",
+    "date_generated": "2026-02-16 01:48:57.070192"
+  },
+  "orders": [
+    {
+      "id": "2324",
+      "sender": {
+        "zip": "DK-6000",
+        "lat": 55.49,
+        "lon": 9.47
+      },
+      "receiver": {
+        "zip": "DE-24941",
+        "lat": 54.78,
+        "lon": 9.43
+      },
+      "demand": {
+        "ldm": 4,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2326",
+      "sender": {
+        "zip": "DK-5250",
+        "lat": 55.37,
+        "lon": 10.43
+      },
+      "receiver": {
+        "zip": "DE-25524",
+        "lat": 53.92,
+        "lon": 9.51
+      },
+      "demand": {
+        "ldm": 14,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2336",
+      "sender": {
+        "zip": "SE-311-39",
+        "lat": 56.9,
+        "lon": 12.49
+      },
+      "receiver": {
+        "zip": "DK-5000",
+        "lat": 55.4,
+        "lon": 10.4
+      },
+      "demand": {
+        "ldm": 6,
+        "goods_type": "B"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2340",
+      "sender": {
+        "zip": "DK-6000",
+        "lat": 55.49,
+        "lon": 9.47
+      },
+      "receiver": {
+        "zip": "GB-SW1HS",
+        "lat": 51.5,
+        "lon": -0.14
+      },
+      "demand": {
+        "ldm": 9,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2348",
+      "sender": {
+        "zip": "DK-6000",
+        "lat": 55.49,
+        "lon": 9.47
+      },
+      "receiver": {
+        "zip": "FR-94000",
+        "lat": 48.79,
+        "lon": 2.46
+      },
+      "demand": {
+        "ldm": 4.8,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2335",
+      "sender": {
+        "zip": "DK-6700",
+        "lat": 55.47,
+        "lon": 8.45
+      },
+      "receiver": {
+        "zip": "FR-11000",
+        "lat": 43.21,
+        "lon": 2.35
+      },
+      "demand": {
+        "ldm": 8,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2353",
+      "sender": {
+        "zip": "DK-7100",
+        "lat": 55.71,
+        "lon": 9.53
+      },
+      "receiver": {
+        "zip": "BE-8200",
+        "lat": 51.2,
+        "lon": 3.22
+      },
+      "demand": {
+        "ldm": 4.8,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2356",
+      "sender": {
+        "zip": "DK-7100",
+        "lat": 55.71,
+        "lon": 9.53
+      },
+      "receiver": {
+        "zip": "BE-8970",
+        "lat": 50.85,
+        "lon": 2.73
+      },
+      "demand": {
+        "ldm": 0.8,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2332",
+      "sender": {
+        "zip": "DK-6000",
+        "lat": 55.49,
+        "lon": 9.47
+      },
+      "receiver": {
+        "zip": "FR-73000",
+        "lat": 45.56,
+        "lon": 5.91
+      },
+      "demand": {
+        "ldm": 1.2,
+        "goods_type": "B"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2331",
+      "sender": {
+        "zip": "DK-5250",
+        "lat": 55.37,
+        "lon": 10.43
+      },
+      "receiver": {
+        "zip": "FR-94000",
+        "lat": 48.79,
+        "lon": 2.46
+      },
+      "demand": {
+        "ldm": 1.9,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2341",
+      "sender": {
+        "zip": "DK-5000",
+        "lat": 55.4,
+        "lon": 10.4
+      },
+      "receiver": {
+        "zip": "NL-3077AA",
+        "lat": 51.9,
+        "lon": 4.5
+      },
+      "demand": {
+        "ldm": 5.2,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "2342",
+      "sender": {
+        "zip": "DK-6000",
+        "lat": 55.49,
+        "lon": 9.47
+      },
+      "receiver": {
+        "zip": "DE-25336",
+        "lat": 53.75,
+        "lon": 9.65
+      },
+      "demand": {
+        "ldm": 3.1,
+        "goods_type": "A"
+      },
+      "time_window": [
+        0,
+        2
+      ]
+    }
+  ],
+  "fleet": [
+    {
+      "vehicle_id": "Truck-001 (Mega)",
+      "allowed_goods": [
+        "A",
+        "B"
+      ],
+      "capacity_ldm": 30
+    },
+    {
+      "vehicle_id": "Truck-002 (Standard)",
+      "allowed_goods": [
+        "B"
+      ],
+      "capacity_ldm": 30
+    },
+    {
+      "vehicle_id": "Truck-003 (Reefer)",
+      "allowed_goods": [
+        "A"
+      ],
+      "capacity_ldm": 30
+    }
+  ]
+}
