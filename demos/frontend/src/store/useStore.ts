@@ -4,11 +4,22 @@ import type {
   JobStatus,
   Order,
   PlanResult,
-  VariantPreset,
   Vehicle,
 } from '../types';
-import type { DispatcherBooking, DispatcherTrip, SolverEngine } from '../types/dispatcher';
-import { mockBookings, mockTrips } from '../data/dispatcherMock';
+import type {
+  AiToastSuggestion,
+  DispatcherBooking,
+  DispatcherTrip,
+  FleetScheduleRow,
+  FleetSummary,
+  SolverEngine,
+} from '../types/dispatcher';
+import {
+  buildDemoFleetSchedule,
+  demoFleetVehicles,
+  mockAiToast,
+  mockFleetSummary,
+} from '../data/dispatcherMock';
 
 export type DispatcherNavId =
   | 'trips'
@@ -16,8 +27,7 @@ export type DispatcherNavId =
   | 'deliveries'
   | 'events'
   | 'estimator'
-  | 'bookings_hub'
-  | 'classic';
+  | 'bookings_hub';
 
 export type TripFilterTab = 'all' | 'drafts' | 'active' | 'delayed' | 'completed';
 export type BookingFilterTab = 'all' | 'suggested';
@@ -26,8 +36,7 @@ interface AppState {
   orders: Order[];
   vehicles: Vehicle[];
   scenarioId: string | null;
-  variant: VariantPreset;
-  numOrders: number;
+  numBookings: number;
 
   currentPlan: PlanResult | null;
   selectedVehicle: string | null;
@@ -50,11 +59,14 @@ interface AppState {
   reviewMode: boolean;
   dispatcherOptimizing: boolean;
 
+  fleetScheduleRows: FleetScheduleRow[];
+  fleetSummary: FleetSummary | null;
+  fleetAiToast: AiToastSuggestion | null;
+
   setOrders: (orders: Order[]) => void;
   setVehicles: (vehicles: Vehicle[]) => void;
-  setScenarioId: (id: string) => void;
-  setVariant: (v: VariantPreset) => void;
-  setNumOrders: (n: number) => void;
+  setScenarioId: (id: string | null) => void;
+  setNumBookings: (n: number) => void;
   setCurrentPlan: (plan: PlanResult | null) => void;
   setSelectedVehicle: (id: string | null) => void;
   setJobId: (id: string | null) => void;
@@ -75,14 +87,22 @@ interface AppState {
   setReviewMode: (v: boolean) => void;
   setDispatcherOptimizing: (v: boolean) => void;
   resetDispatcherSelection: () => void;
+
+  loadFleetDemoSnapshot: () => void;
+  clearFleetPlanning: () => void;
+  addFleetTruck: (params: {
+    vehicle_id: string;
+    capacity_tons: number;
+    depot_lat: number;
+    depot_lon: number;
+  }) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
   orders: [],
   vehicles: [],
   scenarioId: null,
-  variant: 'all',
-  numOrders: 12,
+  numBookings: 8,
   currentPlan: null,
   selectedVehicle: null,
   jobId: null,
@@ -93,20 +113,23 @@ export const useStore = create<AppState>((set) => ({
 
   activeNav: 'trips',
   solverEngine: 'routefinder',
-  dispatcherTrips: mockTrips,
-  dispatcherBookings: mockBookings,
-  tripTab: 'drafts',
-  bookingTab: 'suggested',
-  expandedTripId: 't2',
-  selectedBookingIds: new Set(['B-IBF-1', 'B-MULTI-2', 'B-VEJ-3']),
-  reviewMode: true,
+  dispatcherTrips: [],
+  dispatcherBookings: [],
+  tripTab: 'all',
+  bookingTab: 'all',
+  expandedTripId: null,
+  selectedBookingIds: new Set(),
+  reviewMode: false,
   dispatcherOptimizing: false,
+
+  fleetScheduleRows: [],
+  fleetSummary: null,
+  fleetAiToast: null,
 
   setOrders: (orders) => set({ orders }),
   setVehicles: (vehicles) => set({ vehicles }),
   setScenarioId: (scenarioId) => set({ scenarioId }),
-  setVariant: (variant) => set({ variant }),
-  setNumOrders: (numOrders) => set({ numOrders }),
+  setNumBookings: (numBookings) => set({ numBookings }),
   setCurrentPlan: (currentPlan) => set({ currentPlan }),
   setSelectedVehicle: (selectedVehicle) => set({ selectedVehicle }),
   setJobId: (jobId) => set({ jobId }),
@@ -133,4 +156,45 @@ export const useStore = create<AppState>((set) => ({
   setReviewMode: (reviewMode) => set({ reviewMode }),
   setDispatcherOptimizing: (dispatcherOptimizing) => set({ dispatcherOptimizing }),
   resetDispatcherSelection: () => set({ selectedBookingIds: new Set(), reviewMode: false }),
+
+  loadFleetDemoSnapshot: () =>
+    set({
+      fleetScheduleRows: buildDemoFleetSchedule(),
+      fleetSummary: mockFleetSummary,
+      fleetAiToast: mockAiToast,
+      vehicles: demoFleetVehicles(),
+    }),
+
+  clearFleetPlanning: () =>
+    set({
+      fleetScheduleRows: [],
+      fleetSummary: null,
+      fleetAiToast: null,
+    }),
+
+  addFleetTruck: ({ vehicle_id, capacity_tons, depot_lat, depot_lon }) => {
+    const v: Vehicle = {
+      vehicle_id,
+      capacity: capacity_tons,
+      depot_lat,
+      depot_lon,
+      allowed_goods: ['A', 'B'],
+      shift_start: 0,
+      shift_end: 1e9,
+      max_distance: 1e9,
+      cost_class: 'standard',
+    };
+    set((s) => ({
+      vehicles: [...s.vehicles, v],
+      fleetScheduleRows: [
+        ...s.fleetScheduleRows,
+        {
+          id: `truck-${vehicle_id}-${Date.now()}`,
+          label: vehicle_id,
+          kind: 'truck',
+          blocks: [],
+        },
+      ],
+    }));
+  },
 }));
