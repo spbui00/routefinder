@@ -60,12 +60,17 @@ class LockedSegment(BaseModel):
     fixed_prefix: list[int] = Field(default_factory=list)
 
 
+SolverEngine = Literal["routefinder", "ortools"]
+
+
 class OptimizationRunCreate(BaseModel):
     scenario_id: str
     vehicle_ids: list[str] = Field(default_factory=list)
     locked_segments: list[LockedSegment] = Field(default_factory=list)
     objective: str = "min_distance"
     variant: Optional[str] = None
+    solver_engine: SolverEngine = "routefinder"
+    max_runtime_seconds: float = 30.0
 
 
 class OptimizationRunResponse(BaseModel):
@@ -91,6 +96,7 @@ class RouteResult(BaseModel):
     sequence: list[int] = Field(default_factory=list)
     lock_flags: list[bool] = Field(default_factory=list)
     metrics: RouteMetrics = Field(default_factory=RouteMetrics)
+    sequence_labels: list[str] = Field(default_factory=list)
 
 
 class ConstraintViolation(BaseModel):
@@ -110,6 +116,8 @@ class PlanResult(BaseModel):
     violations: list[ConstraintViolation] = Field(default_factory=list)
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     published_version: Optional[str] = None
+    solver_engine: SolverEngine = "routefinder"
+    postprocess: Optional[dict] = None
 
 
 class JobStatusResponse(BaseModel):

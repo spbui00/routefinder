@@ -22,6 +22,8 @@ def _run_optimization(job_id: str, scenario: dict, request: OptimizationRunCreat
             vehicle_ids=request.vehicle_ids or None,
             locked_segments=request.locked_segments or None,
             variant=request.variant,
+            solver_engine=request.solver_engine,
+            max_runtime_seconds=request.max_runtime_seconds,
         )
         store.store_plan(plan)
         store.update_job(
