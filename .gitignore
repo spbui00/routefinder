@@ -83,6 +83,8 @@ coverage.xml
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+demos/app/data/distance_cache.sqlite
+demos/app/data/distance_cache.sqlite-journal
 
 # Flask stuff:
 instance/
