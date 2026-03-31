@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
@@ -11,6 +13,14 @@ import {
   WORKFLOW_STEPS,
   ROUTE_LEGEND,
 } from '../data/cheatSheet';
+
+function Tex({ children, display = false }: { children: string; display?: boolean }) {
+  const html = useMemo(
+    () => katex.renderToString(children, { displayMode: display, throwOnError: false }),
+    [children, display],
+  );
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 const featureColorMap = Object.fromEntries(
   FEATURE_LEGEND.map((f) => [f.key, f.color]),
@@ -154,6 +164,59 @@ export default function CheatSheetDialog() {
                     </ol>
                   </section>
 
+                  {/* Cost Calculation */}
+                  <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Cost Calculation
+                    </h3>
+                    <div className="rounded-lg border border-border bg-card overflow-hidden">
+                      <div className="bg-muted/30 px-3 py-2 border-b border-border">
+                        <p className="text-xs text-muted-foreground">
+                          The objective value is the total Euclidean distance on solver-normalized coordinates.
+                        </p>
+                      </div>
+                      <div className="p-4 space-y-4 overflow-x-auto">
+                        <div>
+                          <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">1. Coordinate normalization</div>
+                          <div className="pl-2">
+                            <Tex display>{String.raw`\hat{x}_i = \frac{\text{lat}_i - \text{lat}_{\min}}{\text{lat}_{\max} - \text{lat}_{\min}}, \qquad \hat{y}_i = \frac{\text{lon}_i - \text{lon}_{\min}}{\text{lon}_{\max} - \text{lon}_{\min}}`}</Tex>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">2. Euclidean distance between nodes</div>
+                          <div className="pl-2">
+                            <Tex display>{String.raw`d(i, j) = \sqrt{(\hat{x}_i - \hat{x}_j)^2 + (\hat{y}_i - \hat{y}_j)^2}`}</Tex>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">3. Route cost per vehicle</div>
+                          <div className="pl-2">
+                            <Tex display>{String.raw`R_v = \sum_{t=0}^{k} d\!\left(n_t,\; n_{t+1}\right), \quad n_0 = n_{k+1} = \text{depot}`}</Tex>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground italic pl-2 mt-1">
+                            For <Tex>{String.raw`\texttt{Open Route}`}</Tex> variants the return leg <Tex>{String.raw`d(n_k, \text{depot})`}</Tex> is omitted.
+                          </p>
+                        </div>
+
+                        <div>
+                          <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">4. Total objective</div>
+                          <div className="pl-2">
+                            <Tex display>{String.raw`\boxed{\;\text{Total Cost} = \sum_{v \in \mathcal{V}} R_v\;}`}</Tex>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-border pt-3">
+                          <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">Derived metrics</div>
+                          <div className="pl-2">
+                            <Tex display>{String.raw`\text{ETA}_v \;(\text{min}) = R_v \times 60`}</Tex>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
                   {/* Feature Legend */}
                   <section>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -248,8 +311,8 @@ export default function CheatSheetDialog() {
                       Notes &amp; Limitations
                     </h3>
                     <ul className="space-y-1 text-sm text-foreground/70 list-disc list-inside">
-                      <li>Coordinates are normalized [0,1] internally; map locations are approximate.</li>
-                      <li>Distance metric is Euclidean on normalized coordinates.</li>
+                      <li>Generated locations are shown as real Copenhagen-area lat/lon; solver normalizes them before solving.</li>
+                      <li>Cost is computed on those normalized coordinates using Euclidean distance, so values are relative.</li>
                       <li>In-memory storage — data is lost on server restart.</li>
                       <li>Greedy nearest-neighbor policy is used when no trained checkpoint is available.</li>
                     </ul>
