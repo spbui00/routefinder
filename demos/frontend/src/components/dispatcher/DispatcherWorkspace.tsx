@@ -3,9 +3,6 @@ import DispatcherNav from './DispatcherNav';
 import TripsPanel from './TripsPanel';
 import BookingsPanel from './BookingsPanel';
 import FleetPlanningView from './FleetPlanningView';
-import MapCanvas from '../MapCanvas';
-import LeftRail from '../LeftRail';
-import RightRail from '../RightRail';
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -17,19 +14,6 @@ function Placeholder({ title }: { title: string }) {
 
 export default function DispatcherWorkspace() {
   const { activeNav, dispatcherOptimizing, solverEngine } = useStore();
-
-  if (activeNav === 'classic') {
-    return (
-      <>
-        <DispatcherNav />
-        <div className="flex-1 flex min-w-0 min-h-0">
-          <LeftRail />
-          <MapCanvas />
-          <RightRail />
-        </div>
-      </>
-    );
-  }
 
   if (activeNav === 'fleet') {
     return (
@@ -57,11 +41,6 @@ export default function DispatcherWorkspace() {
             className={`flex-1 flex min-w-0 min-h-0 ${dispatcherOptimizing ? 'pt-10' : ''}`}
           >
             <TripsPanel />
-            <div className="hidden lg:flex w-[min(32vw,320px)] shrink-0 border-r border-border min-h-0 h-full flex-col">
-              <div className="flex-1 min-h-0 flex flex-col">
-                <MapCanvas />
-              </div>
-            </div>
             <BookingsPanel />
           </div>
         </div>

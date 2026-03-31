@@ -1,14 +1,6 @@
 import { useStore, type DispatcherNavId } from '../../store/useStore';
 import { Button } from '../ui/button';
-import {
-  Route,
-  Truck,
-  Package,
-  ScrollText,
-  Calculator,
-  Inbox,
-  Map,
-} from 'lucide-react';
+import { Route, Truck, Package, ScrollText, Calculator, Inbox } from 'lucide-react';
 
 const items: { id: DispatcherNavId; icon: typeof Route; label: string }[] = [
   { id: 'trips', icon: Route, label: 'Trips' },
@@ -17,7 +9,6 @@ const items: { id: DispatcherNavId; icon: typeof Route; label: string }[] = [
   { id: 'events', icon: ScrollText, label: 'Events' },
   { id: 'estimator', icon: Calculator, label: 'Estimator' },
   { id: 'bookings_hub', icon: Inbox, label: 'Bookings' },
-  { id: 'classic', icon: Map, label: 'Map' },
 ];
 
 export default function DispatcherNav() {
