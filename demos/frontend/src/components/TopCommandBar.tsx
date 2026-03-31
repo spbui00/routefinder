@@ -42,6 +42,7 @@ export default function TopCommandBar() {
     setViolations,
     setOrders,
     setVehicles,
+    solverEngine,
   } = useStore();
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -145,14 +146,20 @@ export default function TopCommandBar() {
         setScenarioId(sid);
       }
       setJobStatus('pending');
-      const jobId = await startOptimization(sid, undefined, undefined, variant);
+      const jobId = await startOptimization(
+        sid,
+        undefined,
+        undefined,
+        variant,
+        solverEngine,
+      );
       setJobId(jobId);
       addAlert(`Optimization started (${variant.toUpperCase()})…`);
       pollJob(jobId);
     } catch (e: unknown) {
       addAlert(`Optimize error: ${(e as Error).message}`);
     }
-  }, [orders, vehicles, scenarioId, variant, setScenarioId, setJobId, setJobStatus, addAlert, pollJob]);
+  }, [orders, vehicles, scenarioId, variant, solverEngine, setScenarioId, setJobId, setJobStatus, addAlert, pollJob]);
 
   const handleReoptimize = useCallback(async () => {
     if (!currentPlan) {
@@ -245,6 +252,9 @@ export default function TopCommandBar() {
 
       <Badge variant="secondary" className="text-[10px] font-mono">
         {variant.toUpperCase()}
+      </Badge>
+      <Badge variant="outline" className="text-[10px]">
+        {solverEngine === 'routefinder' ? 'Solver: AI' : 'Solver: OR-Tools'}
       </Badge>
 
       <Button size="sm" onClick={handleOptimize}>

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useStore } from '../store/useStore';
-import type { RouteResult } from '../types';
+import type { Order, RouteResult } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -25,7 +25,7 @@ function RouteCard({
   isSelected: boolean;
   onSelect: () => void;
   onToggleLock: (idx: number) => void;
-  orders: ReturnType<typeof useStore>['orders'];
+  orders: Order[];
 }) {
   const hasLocked = route.lock_flags.some(Boolean);
 
@@ -149,10 +149,15 @@ export default function RightRail() {
 
   return (
     <aside className="w-[340px] bg-sidebar text-sidebar-foreground flex flex-col border-l border-sidebar-border">
-      <div className="p-3 flex items-center justify-between">
+      <div className="p-3 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Route className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">Vehicle Routes</h2>
+          {currentPlan?.solver_engine && (
+            <Badge variant={currentPlan.solver_engine === 'routefinder' ? 'default' : 'secondary'} className="text-[9px]">
+              {currentPlan.solver_engine === 'routefinder' ? 'AI' : 'OR-Tools'}
+            </Badge>
+          )}
         </div>
         {currentPlan && (
           <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={handleUnlockAll}>

@@ -42,6 +42,7 @@ export interface RouteResult {
   sequence: number[];
   lock_flags: boolean[];
   metrics: RouteMetrics;
+  sequence_labels?: string[];
 }
 
 export interface ConstraintViolation {
@@ -61,6 +62,8 @@ export interface PlanResult {
   violations: ConstraintViolation[];
   created_at: string;
   published_version?: string;
+  solver_engine?: import('./dispatcher').SolverEngine;
+  postprocess?: Record<string, unknown>;
 }
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed';
@@ -86,3 +89,18 @@ export const VARIANT_PRESETS = [
 ] as const;
 
 export type VariantPreset = typeof VARIANT_PRESETS[number];
+
+export type {
+  AiToastSuggestion,
+  DispatcherBooking,
+  DispatcherDepot,
+  DispatcherTrip,
+  FleetSummary,
+  GanttBlock,
+  OptimizationJobState,
+  PostProcessorPayload,
+  PreProcessorPayload,
+  SolverEngine,
+  TripStatus,
+  TripStopRow,
+} from './dispatcher';
