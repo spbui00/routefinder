@@ -1,12 +1,20 @@
+import { useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import type { DispatcherTrip, SolverEngine } from '../../types/dispatcher';
-import { tripTabCounts } from '../../data/dispatcherMock';
+import { bookingsToOrders, generatePdptwBookings, tripTabCountsFromTrips } from '../../data/dispatcherMock';
+import {
+  createScenario,
+  getJobStatus,
+  publishPlan,
+  rerunPlan,
+  startOptimization,
+} from '../../api/client';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatDkk } from './formatters';
-import { ChevronDown, ChevronRight, Sparkles, Truck } from 'lucide-react';
+import { ChevronDown, ChevronRight, Play, RotateCcw, Send, Sparkles, Truck } from 'lucide-react';
 
 function EngineBadge({ engine }: { engine?: SolverEngine }) {
   if (!engine) return null;
@@ -120,6 +128,14 @@ function TripCard({
   );
 }
 
+const TAB_TO_STATUS: Record<string, DispatcherTrip['status'] | null> = {
+  all: null,
+  drafts: 'draft',
+  active: 'active',
+  delayed: 'delayed',
+  completed: 'completed',
+};
+
 export default function TripsPanel() {
   const {
     dispatcherTrips,
@@ -127,20 +143,178 @@ export default function TripsPanel() {
     setTripTab,
     expandedTripId,
     setExpandedTripId,
+    numBookings,
+    setNumBookings,
+    setDispatcherBookings,
+    setScenarioId,
+    setCurrentPlan,
+    setOrders,
+    addAlert,
+    orders,
+    vehicles,
+    scenarioId,
+    dispatcherBookings,
+    currentPlan,
+    setJobId,
+    setJobStatus,
+    setJobProgress,
+    setViolations,
+    solverEngine,
+    setSolverEngine,
+    setDispatcherOptimizing,
   } = useStore();
 
+  const pollJob = useCallback(
+    async (jobId: string) => {
+      const poll = async () => {
+        const status = await getJobStatus(jobId);
+        setJobStatus(status.status);
+        setJobProgress(status.progress);
+        if (status.status === 'completed' && status.plan) {
+          setCurrentPlan(status.plan);
+          setViolations(status.plan.violations ?? []);
+          setDispatcherOptimizing(false);
+          addAlert(`Optimization complete — cost: ${status.plan.objective_value.toFixed(4)}`);
+          return;
+        }
+        if (status.status === 'failed') {
+          setDispatcherOptimizing(false);
+          addAlert('Optimization failed');
+          return;
+        }
+        setTimeout(poll, 500);
+      };
+      poll();
+    },
+    [
+      setJobStatus,
+      setJobProgress,
+      setCurrentPlan,
+      setViolations,
+      setDispatcherOptimizing,
+      addAlert,
+    ],
+  );
+
+  const handleOptimize = useCallback(async () => {
+    const ordersForRun =
+      orders.length > 0 ? orders : bookingsToOrders(dispatcherBookings);
+    const vehiclesForRun = vehicles;
+
+    if (ordersForRun.length === 0) {
+      addAlert('Generate bookings first (or upload orders JSON)');
+      return;
+    }
+    if (vehiclesForRun.length === 0) {
+      addAlert('Add fleet vehicles in Fleet (Add truck or Generate demo fleet)');
+      return;
+    }
+    setDispatcherOptimizing(true);
+    try {
+      let sid = scenarioId;
+      if (!sid) {
+        sid = await createScenario(ordersForRun, vehiclesForRun);
+        setScenarioId(sid);
+        setOrders(ordersForRun);
+      }
+      setJobStatus('pending');
+      const jobId = await startOptimization(
+        sid,
+        undefined,
+        undefined,
+        undefined,
+        solverEngine,
+      );
+      setJobId(jobId);
+      addAlert('Optimization started (PDPTW)…');
+      pollJob(jobId);
+    } catch (e: unknown) {
+      setDispatcherOptimizing(false);
+      addAlert(`Optimize error: ${(e as Error).message}`);
+    }
+  }, [
+    orders,
+    vehicles,
+    scenarioId,
+    dispatcherBookings,
+    solverEngine,
+    setScenarioId,
+    setJobId,
+    setJobStatus,
+    setOrders,
+    addAlert,
+    pollJob,
+    setDispatcherOptimizing,
+  ]);
+
+  const handleReoptimize = useCallback(async () => {
+    if (!currentPlan) {
+      addAlert('No plan to re-optimize');
+      return;
+    }
+    setDispatcherOptimizing(true);
+    try {
+      const locked = currentPlan.routes
+        .filter((r) => r.lock_flags.some(Boolean))
+        .map((r) => ({
+          vehicle_id: r.vehicle_id,
+          fixed_prefix: r.sequence.filter((_, i) => r.lock_flags[i]),
+        }));
+      setJobStatus('pending');
+      const jobId = await rerunPlan(currentPlan.plan_id, locked);
+      setJobId(jobId);
+      addAlert('Re-optimization started…');
+      pollJob(jobId);
+    } catch (e: unknown) {
+      setDispatcherOptimizing(false);
+      addAlert(`Re-optimize error: ${(e as Error).message}`);
+    }
+  }, [currentPlan, setJobId, setJobStatus, addAlert, pollJob, setDispatcherOptimizing]);
+
+  const handlePublish = useCallback(async () => {
+    if (!currentPlan) {
+      addAlert('No plan to publish');
+      return;
+    }
+    try {
+      const result = await publishPlan(currentPlan.plan_id);
+      addAlert(`Published: ${result.dispatch_snapshot_id}`);
+      setCurrentPlan({ ...currentPlan, status: 'published' });
+    } catch (e: unknown) {
+      addAlert(`Publish error: ${(e as Error).message}`);
+    }
+  }, [currentPlan, setCurrentPlan, addAlert]);
+
+  const handleGenerateBookings = useCallback(() => {
+    const list = generatePdptwBookings(numBookings);
+    setDispatcherBookings(list);
+    setScenarioId(null);
+    setCurrentPlan(null);
+    setOrders([]);
+    addAlert(`Generated ${list.length} PDPTW bookings`);
+  }, [
+    numBookings,
+    setDispatcherBookings,
+    setScenarioId,
+    setCurrentPlan,
+    setOrders,
+    addAlert,
+  ]);
+
+  const counts = tripTabCountsFromTrips(dispatcherTrips);
+
   const tabs = [
-    { id: 'all' as const, label: `All (${tripTabCounts.all})` },
-    { id: 'drafts' as const, label: `Drafts (${tripTabCounts.drafts})` },
-    { id: 'active' as const, label: `Active (${tripTabCounts.active})` },
-    { id: 'delayed' as const, label: `Delayed (${tripTabCounts.delayed})` },
-    { id: 'completed' as const, label: `Completed (${tripTabCounts.completed})` },
+    { id: 'all' as const, label: `All (${counts.all})` },
+    { id: 'drafts' as const, label: `Drafts (${counts.draft})` },
+    { id: 'active' as const, label: `Active (${counts.active})` },
+    { id: 'delayed' as const, label: `Delayed (${counts.delayed})` },
+    { id: 'completed' as const, label: `Completed (${counts.completed})` },
   ];
 
-  const list =
-    tripTab === 'all'
-      ? dispatcherTrips
-      : dispatcherTrips.filter((t) => t.status === tripTab.replace(/s$/, ''));
+  const statusFilter = TAB_TO_STATUS[tripTab];
+  const list = statusFilter
+    ? dispatcherTrips.filter((t) => t.status === statusFilter)
+    : dispatcherTrips;
 
   return (
     <div className="flex flex-col min-w-0 flex-1 bg-background border-r border-border">
@@ -162,28 +336,89 @@ export default function TripsPanel() {
             </Button>
           ))}
         </div>
-        <Button size="sm" className="h-7 text-[11px] ml-auto">
-          + New export draft
+        <Button size="sm" className="h-7 text-[11px] ml-auto" variant="outline" disabled>
+          + New trip (after plan)
         </Button>
-        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-          17–19 December, 2025
-        </span>
+      </div>
+      <div className="px-3 py-2 border-b border-border flex flex-wrap items-center gap-2 bg-muted/25">
+        <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
+          PDPTW
+        </Badge>
+        <span className="text-[10px] text-muted-foreground">Generate</span>
+        <input
+          type="number"
+          min={1}
+          max={100}
+          value={numBookings}
+          onChange={(e) =>
+            setNumBookings(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))
+          }
+          className="w-14 bg-background border border-border rounded-md px-2 py-1 text-xs font-medium text-foreground text-center focus:outline-none focus:ring-1 focus:ring-ring"
+          title="Number of bookings to generate"
+        />
+        <span className="text-[10px] text-muted-foreground">bookings</span>
+        <Button variant="secondary" size="sm" className="h-7 text-[11px]" onClick={handleGenerateBookings}>
+          <Sparkles className="h-3.5 w-3.5" />
+          Generate bookings
+        </Button>
+      </div>
+      <div className="px-3 py-2 border-b border-border flex flex-wrap items-center gap-2 bg-muted/15">
+        <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide shrink-0">
+          Solver
+        </label>
+        <select
+          value={solverEngine}
+          onChange={(e) => setSolverEngine(e.target.value as 'routefinder' | 'ortools')}
+          className="h-7 min-w-[140px] rounded-md border border-input bg-background px-2 text-xs"
+        >
+          <option value="routefinder">AI (RouteFinder)</option>
+          <option value="ortools">OR-Tools</option>
+        </select>
+        <div className="w-px h-5 bg-border shrink-0 hidden sm:block" />
+        <Button size="sm" className="h-7 text-[11px]" onClick={handleOptimize}>
+          <Play className="h-3.5 w-3.5" />
+          Optimize
+        </Button>
+        <Button variant="warning" size="sm" className="h-7 text-[11px]" onClick={handleReoptimize}>
+          <RotateCcw className="h-3.5 w-3.5" />
+          Re-optimize
+        </Button>
+        <Button variant="success" size="sm" className="h-7 text-[11px]" onClick={handlePublish}>
+          <Send className="h-3.5 w-3.5" />
+          Publish
+        </Button>
+        {currentPlan && (
+          <Badge
+            variant={currentPlan.status === 'published' ? 'success' : 'info'}
+            className="text-[10px] font-mono ml-auto"
+          >
+            {currentPlan.plan_id.slice(0, 8)}… · {currentPlan.status}
+          </Badge>
+        )}
       </div>
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-3">
-          <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
-            17th december
-          </div>
-          {list.map((trip) => (
-            <TripCard
-              key={trip.id}
-              trip={trip}
-              expanded={expandedTripId === trip.id}
-              onToggle={() =>
-                setExpandedTripId(expandedTripId === trip.id ? null : trip.id)
-              }
-            />
-          ))}
+          {list.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-12 text-center text-sm text-muted-foreground">
+              <p className="font-medium text-foreground/80 mb-1">No trips yet</p>
+              <p className="text-xs max-w-sm mx-auto">
+                Trips appear here after you optimize and publish, or when you attach bookings to a
+                draft. Use <strong>Generate bookings</strong> above, add trucks under Fleet, then run
+                <strong> Optimize</strong> in this column.
+              </p>
+            </div>
+          ) : (
+            list.map((trip) => (
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                expanded={expandedTripId === trip.id}
+                onToggle={() =>
+                  setExpandedTripId(expandedTripId === trip.id ? null : trip.id)
+                }
+              />
+            ))
+          )}
         </div>
       </ScrollArea>
     </div>
