@@ -24,6 +24,17 @@ export interface DispatcherBooking {
   ldm: number;
   revenueDkk: number;
   preDraftAiRef?: string;
+  pickupLat: number;
+  pickupLng: number;
+  deliveryLat: number;
+  deliveryLng: number;
+}
+
+export interface FleetScheduleRow {
+  id: string;
+  label: string;
+  kind: 'truck' | 'trailer' | 'driver';
+  blocks: GanttBlock[];
 }
 
 export interface TripStopRow {

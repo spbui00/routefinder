@@ -15,6 +15,12 @@ export interface Order {
   demand_linehaul?: number;
   demand_backhaul?: number;
   demand_unit?: string;
+  weight_kg?: number;
+  ldm?: number;
+  pll?: number;
+  delivery_lat?: number;
+  delivery_lon?: number;
+  revenue_dkk?: number;
 }
 
 export interface Vehicle {
