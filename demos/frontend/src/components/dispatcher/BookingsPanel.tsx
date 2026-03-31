@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatDkk } from './formatters';
-import { Sparkles, Inbox } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 
 function BookingRow({
   b,
@@ -72,13 +72,10 @@ export default function BookingsPanel() {
     dispatcherBookings,
     bookingTab,
     setBookingTab,
-    solverEngine,
-    setSolverEngine,
     selectedBookingIds,
     toggleBookingSelect,
     reviewMode,
     resetDispatcherSelection,
-    setDispatcherOptimizing,
   } = useStore();
 
   const showSuggestedOnly = bookingTab === 'suggested';
@@ -106,35 +103,6 @@ export default function BookingsPanel() {
             onClick={() => setBookingTab('suggested')}
           >
             Suggested
-          </Button>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-            Solver
-          </label>
-          <select
-            value={solverEngine}
-            onChange={(e) => setSolverEngine(e.target.value as 'routefinder' | 'ortools')}
-            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-          >
-            <option value="routefinder">AI (RouteFinder)</option>
-            <option value="ortools">OR-Tools</option>
-          </select>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" className="flex-1 h-8 text-[11px]" disabled>
-            Release
-          </Button>
-          <Button
-            size="sm"
-            className="flex-1 h-8 text-[11px]"
-            onClick={() => {
-              setDispatcherOptimizing(true);
-              window.setTimeout(() => setDispatcherOptimizing(false), 2000);
-            }}
-          >
-            <Sparkles className="h-3 w-3 mr-1" />
-            Optimise trip
           </Button>
         </div>
       </div>
