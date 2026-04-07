@@ -5,7 +5,6 @@ import { bookingsToOrders, generatePdptwBookings, tripTabCountsFromTrips } from 
 import {
   createScenario,
   getJobStatus,
-  publishPlan,
   rerunPlan,
   startOptimization,
 } from '../../api/client';
@@ -14,7 +13,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatDkk } from './formatters';
-import { ChevronDown, ChevronRight, Play, RotateCcw, Send, Sparkles, Truck } from 'lucide-react';
+import { ChevronDown, ChevronRight, Play, RotateCcw, Sparkles, Truck } from 'lucide-react';
 
 function EngineBadge({ engine }: { engine?: SolverEngine }) {
   if (!engine) return null;
@@ -271,20 +270,6 @@ export default function TripsPanel() {
     }
   }, [currentPlan, setJobId, setJobStatus, addAlert, pollJob, setDispatcherOptimizing]);
 
-  const handlePublish = useCallback(async () => {
-    if (!currentPlan) {
-      addAlert('No plan to publish');
-      return;
-    }
-    try {
-      const result = await publishPlan(currentPlan.plan_id);
-      addAlert(`Published: ${result.dispatch_snapshot_id}`);
-      setCurrentPlan({ ...currentPlan, status: 'published' });
-    } catch (e: unknown) {
-      addAlert(`Publish error: ${(e as Error).message}`);
-    }
-  }, [currentPlan, setCurrentPlan, addAlert]);
-
   const handleGenerateBookings = useCallback(() => {
     const list = generatePdptwBookings(numBookings);
     setDispatcherBookings(list);
@@ -383,10 +368,6 @@ export default function TripsPanel() {
           <RotateCcw className="h-3.5 w-3.5" />
           Re-optimize
         </Button>
-        <Button variant="success" size="sm" className="h-7 text-[11px]" onClick={handlePublish}>
-          <Send className="h-3.5 w-3.5" />
-          Publish
-        </Button>
         {currentPlan && (
           <Badge
             variant={currentPlan.status === 'published' ? 'success' : 'info'}
@@ -402,7 +383,7 @@ export default function TripsPanel() {
             <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-12 text-center text-sm text-muted-foreground">
               <p className="font-medium text-foreground/80 mb-1">No trips yet</p>
               <p className="text-xs max-w-sm mx-auto">
-                Trips appear here after you optimize and publish, or when you attach bookings to a
+                Trips appear here after you optimize, or when you attach bookings to a
                 draft. Use <strong>Generate bookings</strong> above, add trucks under Fleet, then run
                 <strong> Optimize</strong> in this column.
               </p>
