@@ -41,6 +41,7 @@ export interface TripStopRow {
   bookingId: string;
   label: string;
   company: string;
+  bookingLeg: string;
   dateLabel: string;
   kg: number;
   ldm: number;

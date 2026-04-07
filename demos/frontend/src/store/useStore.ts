@@ -14,12 +14,7 @@ import type {
   FleetSummary,
   SolverEngine,
 } from '../types/dispatcher';
-import {
-  buildDemoFleetSchedule,
-  demoFleetVehicles,
-  mockAiToast,
-  mockFleetSummary,
-} from '../data/dispatcherMock';
+import { demoFleetVehicles } from '../data/dispatcherMock';
 
 export type DispatcherNavId =
   | 'trips'
@@ -159,9 +154,9 @@ export const useStore = create<AppState>((set) => ({
 
   loadFleetDemoSnapshot: () =>
     set({
-      fleetScheduleRows: buildDemoFleetSchedule(),
-      fleetSummary: mockFleetSummary,
-      fleetAiToast: mockAiToast,
+      fleetScheduleRows: [],
+      fleetSummary: null,
+      fleetAiToast: null,
       vehicles: demoFleetVehicles(),
     }),
 
@@ -186,15 +181,6 @@ export const useStore = create<AppState>((set) => ({
     };
     set((s) => ({
       vehicles: [...s.vehicles, v],
-      fleetScheduleRows: [
-        ...s.fleetScheduleRows,
-        {
-          id: `truck-${vehicle_id}-${Date.now()}`,
-          label: vehicle_id,
-          kind: 'truck',
-          blocks: [],
-        },
-      ],
     }));
   },
 }));

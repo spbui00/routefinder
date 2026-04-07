@@ -4,7 +4,7 @@ import sys
 import os
 import uuid
 import math
-from typing import Optional
+from typing import Any, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -33,8 +33,8 @@ from .pipeline.postprocess import aggregate_margin, postprocess_to_dict
 from .pipeline.preprocess import preprocess_bookings_for_route
 
 _env_cache: dict[str, object] = {}
-_policy = None
-_model = None
+_routefinder_model: Any = None
+_routefinder_model_attempted: bool = False
 
 _CAP_KG_DEFAULT = 40_000.0
 _CAP_LDM = 13.6
@@ -154,7 +154,7 @@ def _build_freight_td_for_vehicle(
 
     pp = np.full(n_cust, -1, dtype=np.int64)
     for del_idx, p_idx in pre.pickup_index_by_delivery_index.items():
-        pp[del_idx] = p_idx
+        pp[del_idx] = int(p_idx) + 1
 
     tw = torch.zeros(1, n, 2)
     tw[..., 1] = float("inf")
@@ -199,35 +199,88 @@ def _build_freight_td_for_vehicle(
     return td, filtered, all_coords, stops, labels
 
 
-def _try_load_model():
-    global _model, _policy
-    if _model is not None:
-        return
+def _get_routefinder_model():
+    global _routefinder_model, _routefinder_model_attempted
+    if _routefinder_model_attempted:
+        return _routefinder_model
+    _routefinder_model_attempted = True
     _patch_torchrl_specs()
     import warnings
+
     warnings.filterwarnings("ignore", message=".*weights_only.*", category=FutureWarning)
     try:
+        import torch
         from routefinder.models import RouteFinderBase
 
+        here = os.path.dirname(__file__)
+        root = os.path.join(here, "..", "..")
         ckpt_paths = [
+            os.path.join(root, "checkpoints", "100", "rf-transformer.ckpt"),
+            os.path.join(here, "..", "checkpoints", "100", "rf-transformer.ckpt"),
             "checkpoints/100/rf-transformer.ckpt",
-            "../checkpoints/100/rf-transformer.ckpt",
-            "demos/../checkpoints/100/rf-transformer.ckpt",
-            os.path.join(os.path.dirname(__file__), "..", "..", "checkpoints", "100", "rf-transformer.ckpt"),
         ]
-        ckpt = None
-        for p in ckpt_paths:
-            if os.path.exists(p):
-                ckpt = p
-                break
-
-        if ckpt:
-            _model = RouteFinderBase.load_from_checkpoint(
-                ckpt, map_location="cpu", strict=False, weights_only=False
-            )
-            _policy = _model.policy.eval()
+        ckpt = next((p for p in ckpt_paths if os.path.isfile(p)), None)
+        if ckpt is None:
+            return None
+        _routefinder_model = RouteFinderBase.load_from_checkpoint(
+            ckpt,
+            map_location="cpu",
+            strict=False,
+            weights_only=False,
+        )
+        _routefinder_model.eval()
+        return _routefinder_model
     except Exception:
-        pass
+        _routefinder_model = None
+        return None
+
+
+def _routefinder_policy_actions(model, env, td, max_steps: int) -> list[int]:
+    import torch
+
+    with torch.inference_mode():
+        out = model.policy(
+            td.clone(),
+            env,
+            phase="test",
+            return_actions=True,
+            max_steps=max_steps,
+        )
+    acts = out["actions"]
+    if acts.dim() == 1:
+        return acts.tolist()
+    return acts[0].tolist()
+
+
+def _env_reaches_done_after_actions(env, td_input, actions: list[int]) -> bool:
+    import torch
+
+    t = env.reset(td_input)
+    for a in actions:
+        t.set("action", torch.tensor([a], dtype=torch.long, device=t.device))
+        t = env.step(t)["next"]
+        if bool(t["done"].all()):
+            return True
+    return bool(t["done"].all())
+
+
+def _freight_greedy_policy(td):
+    import torch
+    from rl4co.utils.ops import gather_by_index
+
+    available_actions = td["action_mask"]
+    curr_node = td["current_node"]
+    loc_cur = gather_by_index(td["locs"], curr_node)
+    distances_next = torch.cdist(loc_cur[:, None, :], td["locs"], p=2.0).squeeze(1)
+    distances_next[~available_actions.bool()] = float("inf")
+    unvisited_cust = td["visited"][:, 1:].logical_not().any(dim=-1, keepdim=True)
+    block_depot = unvisited_cust & (
+        td["used_capacity_linehaul"] < td["vehicle_capacity"]
+    )
+    distances_next[:, 0] = float("inf") * block_depot.float().squeeze(-1)
+    action = torch.argmin(distances_next, dim=-1)
+    td.set("action", action)
+    return td
 
 
 def _peak_load_fraction_from_seq(full_seq: list[int], stops) -> float:
@@ -378,9 +431,9 @@ def solve_scenario(
         )
 
     import torch
-    from routefinder.utils import greedy_policy, rollout, rollout_actions
+    from tensordict import TensorDict
+    from routefinder.utils import rollout, rollout_actions
 
-    _try_load_model()
     settings = scenario.get("settings", {})
     effective_variant = variant or settings.get("variant", "all")
     orders_raw = scenario["orders"]
@@ -400,15 +453,29 @@ def solve_scenario(
     routes: list[RouteResult] = []
     violations: list[ConstraintViolation] = []
     total_obj = 0.0
+    rf_model = _get_routefinder_model()
+    greedy_only = os.environ.get("ROUTEFINDER_GREEDY_ONLY", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     for veh in vehicles_raw:
         vid = veh["vehicle_id"]
         result = _build_freight_td_for_vehicle(orders_raw, veh)
         if result is None:
             continue
-        td, _filtered, _all_coords, stops, labels = result
+        td0, _filtered, _all_coords, stops, labels = result
+        td_problem = TensorDict(
+            {
+                k: v.clone() if hasattr(v, "clone") else v
+                for k, v in td0.items()
+            },
+            batch_size=td0.batch_size,
+            device=td0.device,
+        )
 
-        td = env.reset(td)
+        td = env.reset(td_problem.clone())
 
         prefix = lock_map.get(vid, [])
         if prefix:
@@ -416,8 +483,43 @@ def solve_scenario(
             td = rollout_actions(env, td, prefix_tensor)
 
         if not td["done"].all():
-            remaining_actions = rollout(env, td.clone(), policy=greedy_policy)
-            full_seq = prefix + remaining_actions[0].tolist()
+            n_loc = int(td["locs"].shape[-2])
+            max_steps_greedy = min(500_000, max(n_loc * 8, 64))
+            max_steps_policy = min(500_000, max(512, n_loc * 64))
+            use_nn = (
+                rf_model is not None
+                and not greedy_only
+                and not prefix
+            )
+            if use_nn:
+                try:
+                    remaining = _routefinder_policy_actions(
+                        rf_model, env, td, max_steps_policy
+                    )
+                    if not _env_reaches_done_after_actions(
+                        env, td_problem.clone(), remaining
+                    ) or len(remaining) >= max_steps_policy - 2:
+                        remaining = rollout(
+                            env,
+                            env.reset(td_problem.clone()).clone(),
+                            policy=_freight_greedy_policy,
+                            max_steps=max_steps_greedy,
+                        )[0].tolist()
+                except Exception:
+                    remaining = rollout(
+                        env,
+                        env.reset(td_problem.clone()).clone(),
+                        policy=_freight_greedy_policy,
+                        max_steps=max_steps_greedy,
+                    )[0].tolist()
+            else:
+                remaining = rollout(
+                    env,
+                    td.clone(),
+                    policy=_freight_greedy_policy,
+                    max_steps=max_steps_greedy,
+                )[0].tolist()
+            full_seq = prefix + remaining
         else:
             full_seq = prefix
 

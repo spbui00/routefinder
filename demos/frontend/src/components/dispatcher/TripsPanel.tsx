@@ -1,7 +1,12 @@
 import { useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import type { DispatcherTrip, SolverEngine } from '../../types/dispatcher';
-import { bookingsToOrders, generatePdptwBookings, tripTabCountsFromTrips } from '../../data/dispatcherMock';
+import {
+  bookingsToOrders,
+  generatePdptwBookings,
+  tripTabCountsFromTrips,
+  tripsFromOptimizationPlan,
+} from '../../data/dispatcherMock';
 import {
   createScenario,
   getJobStatus,
@@ -92,6 +97,7 @@ function TripCard({
             <thead>
               <tr className="text-muted-foreground text-left border-b border-border">
                 <th className="py-1 pr-2 font-medium">Stop</th>
+                <th className="py-1 pr-2 font-medium">Booking</th>
                 <th className="py-1 pr-2 font-medium">Co.</th>
                 <th className="py-1 pr-2 font-medium">Date</th>
                 <th className="py-1 pr-2 font-medium text-right">kg</th>
@@ -107,6 +113,9 @@ function TripCard({
                       {row.isPickup ? '↑ ' : '↓ '}
                     </span>
                     {row.label}
+                  </td>
+                  <td className="py-1.5 pr-2 text-muted-foreground max-w-[140px]">
+                    {row.bookingLeg}
                   </td>
                   <td className="py-1.5 pr-2">{row.company}</td>
                   <td className="py-1.5 pr-2">{row.dateLabel}</td>
@@ -161,6 +170,7 @@ export default function TripsPanel() {
     solverEngine,
     setSolverEngine,
     setDispatcherOptimizing,
+    setDispatcherTrips,
   } = useStore();
 
   const pollJob = useCallback(
@@ -172,6 +182,15 @@ export default function TripsPanel() {
         if (status.status === 'completed' && status.plan) {
           setCurrentPlan(status.plan);
           setViolations(status.plan.violations ?? []);
+          const ordersForTrips =
+            orders.length > 0 ? orders : bookingsToOrders(dispatcherBookings);
+          setDispatcherTrips(
+            tripsFromOptimizationPlan(
+              status.plan,
+              ordersForTrips,
+              dispatcherBookings,
+            ),
+          );
           setDispatcherOptimizing(false);
           addAlert(`Optimization complete — cost: ${status.plan.objective_value.toFixed(4)}`);
           return;
@@ -192,6 +211,9 @@ export default function TripsPanel() {
       setViolations,
       setDispatcherOptimizing,
       addAlert,
+      orders,
+      dispatcherBookings,
+      setDispatcherTrips,
     ],
   );
 
@@ -276,6 +298,7 @@ export default function TripsPanel() {
     setScenarioId(null);
     setCurrentPlan(null);
     setOrders([]);
+    setDispatcherTrips([]);
     addAlert(`Generated ${list.length} PDPTW bookings`);
   }, [
     numBookings,
@@ -283,6 +306,7 @@ export default function TripsPanel() {
     setScenarioId,
     setCurrentPlan,
     setOrders,
+    setDispatcherTrips,
     addAlert,
   ]);
 

@@ -15,12 +15,26 @@ class FreightMTVRPEnv(MTVRPEnv):
     ) -> TensorDict:
         device = td.device
         bs = batch_size if batch_size is not None else td.batch_size
-        n_in = td["demand_linehaul"].shape[-1]
+        n_cust = td["locs"].shape[-2] - 1
         pp = td.get("pickup_predecessor")
         if pp is None:
-            pp = torch.full((*bs, n_in), -1, dtype=torch.long, device=device)
+            pp = torch.full((*bs, n_cust), -1, dtype=torch.long, device=device)
         else:
             pp = pp.long()
+            if pp.shape[-1] != n_cust:
+                if pp.shape[-1] > n_cust:
+                    pp = pp[..., :n_cust]
+                else:
+                    pad = n_cust - pp.shape[-1]
+                    pp = torch.cat(
+                        [
+                            pp,
+                            torch.full(
+                                (*bs, pad), -1, dtype=torch.long, device=device
+                            ),
+                        ],
+                        dim=-1,
+                    )
 
         td_reset = super()._reset(td, batch_size)
         td_reset["pickup_predecessor"] = torch.cat(
@@ -30,7 +44,6 @@ class FreightMTVRPEnv(MTVRPEnv):
             ],
             dim=-1,
         )
-        td_reset["current_load"] = torch.zeros((*bs, 1), dtype=torch.float32, device=device)
         return td_reset
 
     def _step(self, td: TensorDict) -> TensorDict:
@@ -62,10 +75,6 @@ class FreightMTVRPEnv(MTVRPEnv):
         )
 
         at_cust = curr_node[:, None] != 0
-        delta_load = at_cust.float() * (
-            selected_demand_backhaul - selected_demand_linehaul
-        )
-        current_load = td["current_load"] + delta_load
 
         used_capacity_linehaul = at_cust.float() * (
             td["used_capacity_linehaul"] + selected_demand_linehaul
@@ -88,7 +97,6 @@ class FreightMTVRPEnv(MTVRPEnv):
                 "used_capacity_linehaul": used_capacity_linehaul,
                 "used_capacity_backhaul": used_capacity_backhaul,
                 "visited": visited,
-                "current_load": current_load,
             }
         )
         td.set("action_mask", self.get_action_mask(td))
@@ -120,13 +128,38 @@ class FreightMTVRPEnv(MTVRPEnv):
 
         dl = td["demand_linehaul"]
         db = td["demand_backhaul"]
-        cl = td["current_load"]
+        cl = td["used_capacity_backhaul"] - td["used_capacity_linehaul"]
         cap = td["vehicle_capacity"]
 
         can_pickup = (cl + db <= cap) | (db <= 0)
         can_deliver = (cl >= dl) | (dl <= 0)
 
-        pred = td["pickup_predecessor"]
+        pred = td.get("pickup_predecessor")
+        n_nodes = dl.shape[-1]
+        if pred is None:
+            pred = torch.full(
+                (*td.batch_size, n_nodes),
+                -1,
+                dtype=torch.long,
+                device=dl.device,
+            )
+        elif pred.shape[-1] != n_nodes:
+            if pred.shape[-1] > n_nodes:
+                pred = pred[..., :n_nodes]
+            else:
+                pad = n_nodes - pred.shape[-1]
+                pred = torch.cat(
+                    [
+                        pred,
+                        torch.full(
+                            (*pred.shape[:-1], pad),
+                            -1,
+                            dtype=torch.long,
+                            device=pred.device,
+                        ),
+                    ],
+                    dim=-1,
+                )
         pred_safe = pred.clamp(min=0)
         pred_done = torch.gather(td["visited"], -1, pred_safe)
         precedence_ok = (pred < 0) | pred_done
